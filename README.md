@@ -1,21 +1,37 @@
--- Setup AWS instance, install PostgreSQL and PostGIS
--- get the Tiger data for at least MA loaded
+These are some notes on how I worked thru this ODD challenge
+http://opendatadiscourse.com/contests/
 
--- addresses
 
+Grab an AWS EC2 instance, install PostgreSQL and PostGIS
+I used debian-7-amd64-default 1403184978 (ami-00a15868)
+Postgres 9.1 and PostGIS 2.0.6
+get the TIGER data for at least MA loaded
+follow:  http://postgis.net/docs/postgis_installation.html
+this involves enabling extensions and just don't forget this:
+SELECT install_missing_indexes();
+Geocoding was MUCH slower without it :-)
+
+
+Load the accidents csv into Postgres (accidents table)
+
+####geocode the address data
+
+```
 drop table addresses_to_geocode;
--- 
+ 
 CREATE TABLE addresses_to_geocode(addid serial PRIMARY KEY, crash_number character varying(40), address text,
         lon numeric, lat numeric, new_address text, rating integer, geom geometry);
--- 
+ 
 INSERT INTO addresses_to_geocode(crash_number, address)
  select crash_number, street_num || ' ' || street_name || ' ' || 'Cambridge, MA' as raw
   from accidents
   where 
   street_num is not null order by crash_number;
+```
  
--- for i in `seq 1000`; do psql -d geocoder -f /tmp/geocode.sql; done
--- where geocode.sql:
+####for i in `seq 1000`; do psql -d geocoder -f /tmp/geocode.sql; done; where geocode.sql:
+
+```
 BEGIN TRANSACTION;
 UPDATE addresses_to_geocode
   SET  (rating, new_address, lon, lat, geom)
@@ -29,13 +45,14 @@ FROM (SELECT addid
     WHERE ag.rating IS NULL ORDER BY addid LIMIT 3) As g ON a.addid = g.addid
 WHERE a.addid = addresses_to_geocode.addid;
 END TRANSACTION;
+```
 
+#### repeat approach on intersection data
+i.e., select * from accidents where 
+      street_num is null and street_name is not null 
+       and cross_street is not null; = 3251
 
--- intersections
--- select * from accidents where 
---street_num is null and street_name is not null 
---and cross_street is not null; -- 3251
--- 
+```
  CREATE TABLE intersections_to_geocode(
  addid serial PRIMARY KEY, crash_number character varying(40), street_name text,
  cross_street text,
@@ -49,15 +66,13 @@ END TRANSACTION;
  street_num is null and street_name is not null 
  and cross_street is not null
  order by crash_number;
+```
 
+####repeat until complete
+for i in `seq 2000`; do psql -d geocoder -f /tmp/geocode_intersections.sql; done
+where geocode_intersections.sql:
 
--- make the debug version:
-
-
--- repeat until complete
--- for i in `seq 2000`; do psql -d geocoder -f /tmp/geocode_intersections.sql; done
--- where geocode_intersections:
-
+```
 BEGIN TRANSACTION;
 UPDATE intersections_to_geocode
   SET  (rating, new_address, lon, lat, geom)
@@ -71,22 +86,27 @@ FROM (SELECT addid
     WHERE ag.rating IS NULL ORDER BY addid LIMIT 3) As g ON a.addid = g.addid
 WHERE a.addid = intersections_to_geocode.addid;
 END TRANSACTION;
+```
 
--- per http://gis.stackexchange.com/questions/11567/spatial-clustering-with-postgis
--- install kmeans 
--- wget http://api.pgxn.org/dist/kmeans/1.1.0/kmeans-1.1.0.zip
--- ... (directions online)
--- psql -f /usr/share/postgresql/9.1/extension/kmeans.sql -U postgres -d geocoder
+as per http://gis.stackexchange.com/questions/11567/spatial-clustering-with-postgis
+install kmeans 
+comes via wget http://api.pgxn.org/dist/kmeans/1.1.0/kmeans-1.1.0.zip
+```
+psql -f /usr/share/postgresql/9.1/extension/kmeans.sql -U postgres -d geocoder
+```
 
--- do the clustering - target 50
--- remember GeoJSON for leaflet
+approach: do the clustering - target 50
+remember GeoJSON for leaflet
 
 
--- keep geoms (not geography types) as per
--- http://workshops.boundlessgeo.com/postgis-intro/geography.html
--- degrees not meters 
--- http://gis.stackexchange.com/questions/23820/how-do-i-get-the-distance-meter-value-between-two-geometries-in-postgis
+note: keep geoms (not geography types) as per
+http://workshops.boundlessgeo.com/postgis-intro/geography.html
+sticking with degrees not meters 
+http://gis.stackexchange.com/questions/23820/how-do-i-get-the-distance-meter-value-between-two-geometries-in-postgis
 
+Focus on the good data (geocoded with rating >= 3) (~90% was ok)
+
+```
 DROP TABLE IF EXISTS geoms_to_cluster;
 
 CREATE TABLE geoms_to_cluster as
@@ -101,7 +121,14 @@ new_address like '%, Cambridge,%' and geom is not null
 and rating in (0,1,2,3);
 
 CREATE INDEX geoms_to_cluster_geom_gist ON geoms_to_cluster USING gist (geom);
+```
 
+Run the kmeans function - remember the size of each cluster, geom, centroid of the geom
+Analysis in QGis shows the expanded cluster geoms overlayed on City of Cambridge centerline data
+http://www.cambridgema.gov/gis/gisdatadictionary/trans/trans_centerlines.aspx
+![Image of QGis](http://54.173.37.176/accidents/img/qgis_pic.png)
+
+```
 DROP TABLE IF EXISTS clusters;
 
 CREATE TABLE clusters as 
@@ -116,44 +143,33 @@ ORDER BY kmeans;
 
 CREATE INDEX clusters_cgeom_gist  ON clusters USING gist (cgeom);
 CREATE INDEX clusters_geom_gist  ON clusters USING gist (geom);
+```
 
--- nearest neighbor approach
--- http://www.bostongis.com/TutBook.aspx#130
--- Regina Obe is a rock star
--- SELECT g1.gid as gid_ref, f.name, g1.nn_dist/1609.344 as dist_miles, g1.nn_gid
--- FROM (SELECT b.gid, 
---     (pgis_fn_nn(b.the_geom, 1000000, 1,1000,'fire_stations', 'true', 'gid', 'the_geom')).*  
---     FROM (SELECT * FROM buildings limit 1000) b) As g1, fire_stations f
---     WHERE f.gid = g1.nn_gid 
---     ORDER BY g1.nn_dist DESC
+run nearest neighbor approach (cluster centroid vs centerlines with srid 4269)
+following http://www.bostongis.com/TutBook.aspx#130
+shoutout:  Regina Obe is a rock star
 
--- geom1 - this is the reference geometry.
--- distguess - this is the furthest distance you want to branch out before you want the query to give up. It is measured in units of the spatial ref system of your geometries.
--- numnn - number of nearest neighbors to return.
--- maxslices - this is the max number of slices you want to slice up your whole expand box. The more slices the thinner the slices, but the more iterations. I'm sure there is some statistically function one can run against ones dataset to figure out the optimal number of slices and distance guess, but I haven't quite figured out what that would be.
--- lookupset - this is usually the name of the table you want to search for nearest neighbors. In theory you could throw in a fairly complicated subselect statement as long as you wrap it in parethesis. Something like '(SELECT g.*, b.name FROM sometable g INNER JOIN someothertable b ON g.id = b.id)' . Althought I haven't had a need to do that yet so haven't tested that feature.
--- swhere - this is the where condition to apply to your dataset. If you want the whole dataset to be evaluated, then put 'true'. In theory you can have this correlated with your reference table by gluing parameters together, so can get pretty sophisticated.
--- sgid2field - this is the name of the unique id field in the dataset you want to check for nearest neighbors.
--- sgeom2field - this is the name of the geometry field in the dataset you want to check for nearest neighbors
-
+```
 DROP table centerlines_srid;
 create table centerlines_srid as select *, st_transform(geom, 4269) as new_geom from centerlines;
-select astext(geom), getsrid(new_geom), astext(new_geom) from centerlines_srid;
 CREATE INDEX centerlines_srid_geom_gist  ON centerlines_srid USING gist (geom);
-  
--- validate the pgis_fn_nn works as expected
---select b.*, pgis_fn_nn(geom, 1000000, 10,1000,'centerlines_srid', 'true', 'gid', 'new_geom')
---from clusters b where kmeans = 26;
+```
 
--- this approach seems to make sense for finding candidate streets
--- on which to place signage; should be based on proximity to the cluster area,
--- not necessary overlap of the cluster edge with a something; plus
--- this give multiple centerline geoms back, and the longest and/or most meaningful st.
--- can be selected from this pgis_fn_nn approach after this
+validate the pgis_fn_nn works as expected
+select b.*, pgis_fn_nn(geom, 1000000, 10,1000,'centerlines_srid', 'true', 'gid', 'new_geom')
+from clusters b where kmeans = 26;
 
+this approach seems to make sense for finding candidate streets
+on which to place signage; should be based on proximity to the cluster area,
+not necessarily overlap of the cluster edge with a something; plus
+this give multiple centerline geoms back, and the longest and/or most meaningful street
+can be selected from this pgis_fn_nn approach after this
 
---select * from clusters - have 0-49 clusters
+check:  select * from clusters - have 0-49 clusters
 
+do the neighbors for each cluster
+
+```
 DROP TABLE IF EXISTS cluster_neighbors;
 
 create table cluster_neighbors as
@@ -172,23 +188,29 @@ FOR i IN 1..49 LOOP
 END LOOP;
 END
 $do$
+```
 
 
--- identify gids closest to cluster (Cambridge centerlines dataset)
+identify gids closest to cluster (Cambridge centerlines dataset gid)
+this has street name and range of address numbers usually
+we have lat lon already, but nice to have meta info
+
+```
 drop table if exists cluster_centerlines;
 
 create table cluster_centerlines as
 select kmeans, cnt, 
 cast(substring(cast(pgis_fn_nn as text) from 2 for position(',' in cast(pgis_fn_nn as text))-2) as integer) as gid
 FROM cluster_neighbors;
+```
 
+get the logical places for signage
+use 'fatten' centerline approach to create buffer against which geom overlaps 
+are evaluated.  Take the intersection with the largest shared area
+as representative of a 'major' intersection, near a cluster
+cnt > 30 removes some outliers (focus on larger clusters)
 
--- get the logical places for signage
--- use 'fatten' centerline approach to create buffer against which geom overlaps 
--- are evaluated.  Take the intersection with the largest shared area
--- as representative of a 'major' intersection, near a cluster
--- cnt > 30 removes some outliers (focus on larger clusters)
-
+```
 drop table if exists centerline_sign_locations;
 
 create table centerline_sign_locations as
@@ -229,10 +251,14 @@ LIMIT 1;
 END LOOP;
 END
 $do$
+```
 
 
+from here out were just export for Leaflet.js
 
--- export accident data
+export accident GeoJSON
+
+```
 SELECT 
 '{"type": "Feature","geometry":' ||
 ST_AsGeoJSON(a.geom) || ',"properties":{
@@ -249,7 +275,6 @@ ST_AsGeoJSON(a.geom) || ',"properties":{
 "object2":"' || b.object2 
 || '"}},'
 
---a.new_address, b.*
 FROM addresses_to_geocode a left join accidents b
 on a.crash_number = b.crash_number
 WHERE 
@@ -272,15 +297,17 @@ ST_AsGeoJSON(a.geom) || ',"properties":{
 "object2":"' || b.object2 
 || '"}},'
 
---a.new_address, b.*
 FROM intersections_to_geocode a left join accidents b
 on a.crash_number = b.crash_number
 WHERE 
 a.new_address like '%, Cambridge,%' and a.geom is not null
 and a.rating in (0,1,2,3);
+```
 
 
--- export cluster data
+export cluster GeoJSON
+
+```
 SELECT 
 '{"type": "Feature","geometry":' ||
 ST_AsGeoJSON(a.cgeom) || ',"properties":{
@@ -290,9 +317,13 @@ ST_AsGeoJSON(a.cgeom) || ',"properties":{
 || '"}},'
 FROM clusters a 
 WHERE a.cnt > 30;
+```
 
+export sign locations along with the actual pointers
+to signs.  This is a tad hacky, but alas I'm rushing here near
+the deadline :-)
 
--- export sign locations 
+```
 drop table if exists signs;
 
 CREATE TABLE signs
@@ -375,6 +406,9 @@ end || '");'
 from centerline_sign_locations c, centerlines_srid b
 where a.gid = c.gid
 and c.gid = b.gid;
+```
 
 
--- export signs.code for U/I
+export signs.code for U/I (from PgAdmin)
+this goes directly in bike_accidents.html
+
