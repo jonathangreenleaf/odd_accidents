@@ -24,11 +24,11 @@ around Cambridge could be effective in addressing this issue.
 <br><br> 
 The question is:  where to post signs?  
 <br><br> 
-My approach was to take the address/intersection location data, and use PostGreSQL/PostGIS, 
+My approach was to take the address/intersection location data, and use <a href="http://www.postgresql.org/">PostgreSQL</a> and <a href="http://postgis.net/">PostGIS</a>, 
 <br> 
 combined with QGis, to visualize the problem.  I installed the former on my AWS free tier, 
 <br> 
-and grabbed TIGER shapefiles for MA, and the GIS data sets from the City of Cambridge.
+and grabbed <a href="https://www.census.gov/geo/maps-data/data/tiger-line.html">TIGER</a> shapefiles for MA, and the <a href="http://www.cambridgema.gov/GIS/gisdatadictionary/Trans/TRANS_Centerlines.aspx">GIS data sets from the City of Cambridge</a>.
 <br> 
 The PostGIS geocoding functions allowed me to visualize where accidents were happening.
 <br> 
@@ -38,9 +38,10 @@ Next, I looked at street centerlines 'near' the defined clusters, trying to find
 <br> 
 important intersections. I used PostGIS buffer / overlap / intersection data 
 <br> 
-to identify these. 
+to identify these:<br>
+<img src="img/qgis_pic.png" width="700px">
 <br><br>
-Lastly, I wanted a simple way to show the final product. Leaflet.js was selected 
+Lastly, I wanted a simple way to show the final product. <a href="http://leafletjs.com/">Leaflet.js</a> was selected 
 <br>for this purpose, cutting out a direct db call in favor of exported GeoJSON 
 <br>/ lat lon data from Postgres.
 <br><br> 
@@ -48,19 +49,27 @@ Conclusion:  I believe most of the 40 proposed locations for signage, as determi
 <br> 
 by this repeatable (and tunable) approach - would work well.  10 small clusters 
 <br> 
-( under 30 accidents) were removed from consideration.  And high traffic streets are 
-<br> 
-would obviously be valuable to cross-reference with this output.
+(those with under 30 accidents) were removed from consideration.  And high traffic 
+<br>
+streets are would obviously be valuable to cross-reference with this output.
+<br><br>
+Because this approach combines open data and statistics, this exercise is not only repeatable 
+<br>
+in other communities, but also it can be refined over time.
 <br><br> 
 I belive the message on these signs should be a mix of memorable, unique and cheeky.
 <br> 
-The signs posted in the U/I should reflect this.
+The signs I created and posted in the U/I should reflect this.  They would give me pause,
+<br> 
+and raise my awareness, whether I was biking or driving in Cambridge.
 <br><br> 
 Thank you for bringing attention to this issue.
 <br>
 <br>
 jonathan greenleaf
 Cambridge, MA
+<br>
+code is shared <a href="https://github.com/jonathangreenleaf/odd_accidents">here</a>
 </div>
 <img src="img/coexist.png" width=300px>
 </body>
