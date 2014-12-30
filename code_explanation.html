@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>ODD Street Safety Challenge</title>
+    <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.6/leaflet.css" />
+    <!--[if lte IE 8]><link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.6/leaflet.ie.css" /><![endif]-->    
+    <script src="http://cdn.leafletjs.com/leaflet-0.6/leaflet.js"></script>
+    <link href="css/mainpage.css" rel="stylesheet" />   
+</head>
+
+<body>
+ <div id="explain">
+I have been biking in and around Cambridge for a decade.  I live here.  My kids go to school here.
+<br>
+I care deeply about bike safety. I pursued this challenge because I have come far too close to 
+<br>
+becoming a statistic in this data set.  
+<br><br>
+I think we have an opportunity to use this data to inform a public policy response. 
+<br><br> 
+I think an approach where creative signs are posted (at least temporarily) 
+<br> 
+around Cambridge could be effective in addressing this issue.
+<br><br> 
+The question is:  where to post signs?  
+<br><br> 
+My approach was to take the address/intersection location data, and use PostGreSQL/PostGIS, 
+<br> 
+combined with QGis, to visualize the problem.  I installed the former on my AWS free tier, 
+<br> 
+and grabbed TIGER shapefiles for MA, and the GIS data sets from the City of Cambridge.
+<br> 
+The PostGIS geocoding functions allowed me to visualize where accidents were happening.
+<br> 
+I then used a kmeans clustering function to define 50 clusters across Cambridge.
+<br><br> 
+Next, I looked at street centerlines 'near' the defined clusters, trying to find
+<br> 
+important intersections. I used PostGIS buffer / overlap / intersection data 
+<br> 
+to identify these. 
+<br><br>
+Lastly, I wanted a simple way to show the final product. Leaflet.js was selected 
+<br>for this purpose, cutting out a direct db call in favor of exported GeoJSON 
+<br>/ lat lon data from Postgres.
+<br><br> 
+Conclusion:  I believe most of the 40 proposed locations for signage, as determined 
+<br> 
+by this repeatable (and tunable) approach - would work well.  10 small clusters 
+<br> 
+( under 30 accidents) were removed from consideration.  And high traffic streets are 
+<br> 
+would obviously be valuable to cross-reference with this output.
+<br><br> 
+I belive the message on these signs should be a mix of memorable, unique and cheeky.
+<br> 
+The signs posted in the U/I should reflect this.
+<br><br> 
+Thank you for bringing attention to this issue.
+<br>
+<br>
+jonathan greenleaf
+Cambridge, MA
+</div>
+<img src="img/coexist.png" width=300px>
+</body>
+</html>
+
