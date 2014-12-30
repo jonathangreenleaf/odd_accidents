@@ -1,3 +1,7 @@
+These are some notes on how I worked thru this ODD challenge
+http://opendatadiscourse.com/contests/
+
+
 Grab an AWS EC2 instance, install PostgreSQL and PostGIS
 I used debian-7-amd64-default 1403184978 (ami-00a15868)
 Postgres 9.1 and PostGIS 2.0.6
