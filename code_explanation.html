@@ -10,75 +10,46 @@
 
 <body>
  <div id="explain">
+    <img src="img/coexist.png" width="200">
+<p>
 I have been biking in and around Cambridge for a decade.  I live here.  My kids go to school here.
-<br>
 I care deeply about bike safety. I pursued this challenge because I have come far too close to 
-<br>
 becoming a statistic in this data set.  
-<br><br>
+<p>
 I think we have an opportunity to use this data to inform a public policy response. 
-<br><br> 
-I think an approach where creative signs are posted (at least temporarily) 
-<br> 
+<p> 
+I think an approach where creative signs are posted (at least temporarily)  
 around Cambridge could be effective in addressing this issue.
-<br><br> 
+<p>
 The question is:  where to post signs?  
-<br><br> 
-My approach was to take the address/intersection location data, and use <a href="http://www.postgresql.org/">PostgreSQL</a> and <a href="http://postgis.net/">PostGIS</a>, 
-<br> 
+<p> 
+My approach was to take the address/intersection location data, and use <a href="http://www.postgresql.org/">PostgreSQL</a> and <a href="http://postgis.net/">PostGIS</a>,  
 combined with QGis, to visualize the problem.  I installed the former on my AWS free tier, 
-<br> 
-and grabbed <a href="https://www.census.gov/geo/maps-data/data/tiger-line.html">TIGER</a> shapefiles for MA, and the <a href="http://www.cambridgema.gov/GIS/gisdatadictionary/Trans/TRANS_Centerlines.aspx">GIS data sets from the City of Cambridge</a>.
-<br> 
-The PostGIS geocoding functions allowed me to visualize where accidents were happening.
-<br> 
-I then used a kmeans clustering function to define 50 clusters across Cambridge.
-<br><br> 
-Next, I looked at street centerlines 'near' the defined clusters, trying to find
-<br> 
-important intersections. I used PostGIS buffer / overlap / intersection data 
-<br> 
-to identify these:<br>
-<img src="img/qgis_pic.png" width="700px">
+and grabbed <a href="https://www.census.gov/geo/maps-data/data/tiger-line.html">TIGER</a> shapefiles for MA, and the <a href="http://www.cambridgema.gov/GIS/gisdatadictionary/Trans/TRANS_Centerlines.aspx">GIS data sets from the City of Cambridge</a>. The PostGIS geocoding functions allowed me to visualize where accidents were happening. I then used a kmeans clustering function to define 50 clusters across Cambridge.
+<p>
+Next, I looked at street centerlines 'near' the defined clusters, trying to find important intersections. I used PostGIS buffer / overlap / intersection data to identify these:
 <br><br>
-Lastly, I wanted a simple way to show the final product. <a href="http://leafletjs.com/">Leaflet.js</a> was selected 
-<br>for this purpose, cutting out a direct db call in favor of exported GeoJSON 
-<br>/ lat lon data from Postgres.
-<br><br> 
-Conclusion:  I believe most of the 40 proposed locations for signage, as determined 
-<br> 
-by this repeatable (and tunable) approach - would work well.  10 small clusters 
-<br> 
-(those with under 30 accidents) were removed from consideration.  And high traffic 
-<br>
-streets would obviously be valuable to cross-reference with this output.
-<br><br>
-Because this approach combines open data and statistics, this exercise is not only repeatable 
-<br>
-in other communities, but also it can be refined over time.  This is meant to apply some  
-<br>
-'science' to the problem, but this <i>does not</i> preclude sign placements a block or 2 away
-<br> 
-from the precise recommended placement here.
-<br><br> 
-Finally, I belive the message on these signs should be a mix of memorable, unique and cheeky.
-<br> 
-The signs I created and posted in the U/I should reflect this.  They would give me pause,
-<br> 
-and raise my awareness, whether I was biking or driving in Cambridge.
-<br><br> 
+<img src="img/qgis_pic.png" width="700px" align="middle">
+<p>
+Lastly, I wanted a simple way to show the final product. <a href="http://leafletjs.com/">Leaflet.js</a> was selected for this purpose, cutting out a direct db call in favor of exported GeoJSON / lat lon data from Postgres.
+<p> 
+<b>Conclusion:</b><br>
+ I believe most of the 40 proposed locations for signage, as determined by this repeatable (and tunable) approach - would work well.  10 small clusters (those with under 30 accidents) were removed from consideration.  And high traffic streets would obviously be valuable to cross-reference with this output.
+<p>
+Because this approach combines open data and statistics, this exercise is not only repeatable in other communities, but also it can be refined over time.  This is meant to apply some 'science' to the problem, but this <i>does not</i> preclude sign placements a block or 2 away from the precise recommended placement here.
+<p>
+Finally, I belive the message on these signs should be a mix of memorable, unique and cheeky. The signs I created and posted in the U/I should reflect this.  They would give me pause, and raise my awareness, whether I was biking or driving in Cambridge.
+<p>
 Thank you for bringing attention to this issue.
-<br>
-<br>
+<p>
+
 jonathan greenleaf
 Cambridge, MA
 <br>
 code is shared <a href="https://github.com/jonathangreenleaf/odd_accidents">here</a>
 <br>
-<br>
 final product is (at least for now) posted <a href="http://54.173.37.176/accidents/bike_accidents.html">here</a>
 </div>
-<img src="img/coexist.png" width=300px>
 </body>
 </html>
 
